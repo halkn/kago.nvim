@@ -98,8 +98,11 @@ local function render_git(state)
         hl_mode = 'combine',
       })
       if status == '!!' then
+        -- The root row carries no name range, and while filtering it holds the query
+        -- header rather than the root path, so fall back to the rendered line.
+        local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ''
         vim.api.nvim_buf_set_extmark(buf, git_ns, row - 1, entry.name_col or 0, {
-          end_col = entry.name_end or #state.root,
+          end_col = entry.name_end or #line,
           hl_group = 'NonText',
         })
       end
@@ -373,7 +376,7 @@ local function accept(state)
   if vim.api.nvim_buf_get_name(0) == entry.path then
     return
   end
-  local ok, open_err = pcall(vim.cmd.edit, { args = { entry.path } })
+  local ok, open_err = pcall(vim.cmd.edit, { args = { entry.path }, magic = { file = false } })
   if not ok then
     notify(open_err)
     vim.api.nvim_set_current_win(assert(state.win))

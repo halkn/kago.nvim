@@ -188,6 +188,16 @@ local function run()
     end
   end
   assert(dimmed and marked, 'ignored descendants need dimmed names and markers')
+  feed('/日本<Esc>')
+  assert(vim.wait(10000, function()
+    return assert(vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1]):find('1 matches', 1, true) ~= nil
+  end))
+  local below_root = false
+  for _, mark in ipairs(marks()) do
+    below_root = below_root or mark[2] > 0
+  end
+  assert(below_root, 'filtering an ignored root must keep decorating the entries below it')
+  feed('<Esc>')
   vim.fn.writefile({}, root .. '/.gitignore')
   feed('u')
   assert(
