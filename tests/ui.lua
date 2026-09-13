@@ -1,7 +1,6 @@
--- vim.ui.input replacement, notification floats and the terminal toggle.
+-- vim.ui.input replacement and notification floats.
 local input = require('kago.input')
 local notify = require('kago.notify')
-local terminal = require('kago.terminal')
 
 local function feed(keys)
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(keys, true, false, true), 'x', false)
@@ -71,37 +70,11 @@ local function notify_keeps_caller_opts()
   )
 end
 
-local function terminal_replaces_dead_buffer()
-  terminal.setup()
-  if not pcall(terminal.toggle) then
-    -- Sandboxed runners cannot spawn a pty, so no terminal buffer exists to replace.
-    io.write('terminal replacement skipped: no pty available\n')
-    return
-  end
-  local buf = vim.api.nvim_get_current_buf()
-  assert(is_float(0), 'toggle must open a float')
-  assert(vim.bo[buf].buftype == 'terminal')
-  local job = math.floor(vim.b[buf].terminal_job_id)
-  vim.fn.jobstop(job)
-  assert(
-    vim.wait(5000, function()
-      return vim.fn.jobwait({ job }, 0)[1] ~= -1
-    end),
-    'terminal job did not exit'
-  )
-  terminal.toggle()
-  terminal.toggle()
-  assert(vim.api.nvim_get_current_buf() ~= buf, 'dead terminal should be replaced')
-  assert(not vim.api.nvim_buf_is_valid(buf), 'dead terminal buffer was leaked')
-  terminal.toggle()
-end
-
 local function run()
   vim.cmd('new')
   input_reports_empty_confirm()
   input_cancels_when_window_is_left()
   notify_keeps_caller_opts()
-  terminal_replaces_dead_buffer()
 end
 
 local ok, err = xpcall(run, debug.traceback)

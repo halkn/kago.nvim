@@ -42,6 +42,9 @@ run = [
   "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/explorer_git.lua'",
   "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/explorer_filter.lua'",
   "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/explorer_preview.lua'",
+  # Last: needs a pty, so it is the entry most likely to be skipped or to fail on a
+  # restricted runner, and everything above still runs first.
+  "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/terminal.lua'",
 ]
 
 [tasks.check]
