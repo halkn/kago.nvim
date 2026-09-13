@@ -39,22 +39,40 @@ function M.input(opts, on_confirm)
     end
   end
 
+  -- vim.ui.input callers may resume a coroutine from on_confirm, so it has to run
+  -- exactly once no matter which way the prompt is left.
+  local finished = false
+  local function finish(value)
+    if finished then
+      return
+    end
+    finished = true
+    close_win()
+    on_confirm(value)
+  end
+
+  vim.api.nvim_create_autocmd({ 'WinLeave', 'BufLeave' }, {
+    buffer = buf,
+    once = true,
+    callback = function()
+      vim.schedule(function()
+        finish(nil)
+      end)
+    end,
+  })
+
   local map_opts = { noremap = true, silent = true, buffer = buf }
 
   vim.keymap.set('i', '<CR>', function()
-    local line = vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1] or ''
-    close_win()
-    on_confirm(line ~= '' and line or nil)
+    finish(vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1] or '')
   end, map_opts)
 
   vim.keymap.set({ 'i', 'n' }, '<Esc>', function()
-    close_win()
-    on_confirm(nil)
+    finish(nil)
   end, map_opts)
 
   vim.keymap.set({ 'i', 'n' }, '<C-c>', function()
-    close_win()
-    on_confirm(nil)
+    finish(nil)
   end, map_opts)
 
   -- Emacs-style motions, kept identical to the picker prompt.

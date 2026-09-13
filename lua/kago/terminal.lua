@@ -72,6 +72,9 @@ local function ensure_buffer()
   if existing and is_terminal_running(existing) then
     return existing
   end
+  if existing ~= nil and vim.api.nvim_buf_is_valid(existing) then
+    vim.api.nvim_buf_delete(existing, { force = true })
+  end
 
   local created = vim.api.nvim_create_buf(false, true)
   state.buf = created

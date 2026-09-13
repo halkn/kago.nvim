@@ -315,15 +315,17 @@ function M.notify(msg, level, notify_opts)
   if not msg or msg == '' then
     return
   end
-  notify_opts = notify_opts or {}
-  if notify_opts.id == nil then
+  -- Callers reuse a single opts table across calls, so the generated id goes into
+  -- a copy instead of turning later messages into updates of the first one.
+  local opts = vim.tbl_extend('force', {}, notify_opts or {})
+  if opts.id == nil then
     id_counter = id_counter + 1
-    notify_opts.id = id_counter
+    opts.id = id_counter
   end
   vim.schedule(function()
-    show(msg, level, notify_opts)
+    show(msg, level, opts)
   end)
-  return notify_opts.id
+  return opts.id
 end
 
 return M

@@ -36,6 +36,7 @@ run = [
   "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/boundaries.lua'",
   "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/editing.lua'",
   "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/picker.lua'",
+  "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/ui.lua'",
   "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/explorer.lua'",
   "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/explorer_git.lua'",
   "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/explorer_filter.lua'",
