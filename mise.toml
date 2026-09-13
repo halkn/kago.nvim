@@ -1,8 +1,9 @@
 [tools]
 neovim = "stable"
 stylua = "latest"
-# Picker's files/grep sources shell out to rg, so the test suite needs it on a bare runner.
+# Runtime dependencies of the modules under test, so the suite also runs on a bare runner.
 ripgrep = "latest"
+fd = "latest"
 
 [tool_alias]
 emmylua_check = "github:EmmyLuaLs/emmylua-analyzer-rust"

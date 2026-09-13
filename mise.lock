@@ -20,6 +20,11 @@ checksum = "sha256:eeaad59d173cb8d7cb0fe778936d7b584fe114a3eb46587ef3e4aec24b605
 url = "https://github.com/EmmyLuaLs/emmylua-analyzer-rust/releases/download/0.25.1/emmylua_check-darwin-arm64.tar.gz"
 url_api = "https://api.github.com/repos/EmmyLuaLs/emmylua-analyzer-rust/releases/assets/514398192"
 
+[[tools.fd]]
+version = "10.5.0"
+backend = "aqua:sharkdp/fd"
+specifiers = ["latest"]
+
 [[tools.neovim]]
 version = "stable"
 backend = "vfox:mise-plugins/vfox-neovim"

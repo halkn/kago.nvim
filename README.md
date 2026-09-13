@@ -22,6 +22,7 @@ provider replacement and user command stays on the calling side.
 - Neovim 0.12 or newer
 - `git` — Explorer git status, `picker.git()`
 - `rg` (ripgrep) — `picker.files()`, `picker.grep()`
+- `fd` — Explorer path filter (`/`)
 
 ## Optional dependencies
 
