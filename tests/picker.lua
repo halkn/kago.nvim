@@ -18,6 +18,46 @@ local function float_win(buf)
   })
 end
 
+---@return integer
+local function float_count()
+  local count = 0
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if vim.api.nvim_win_get_config(win).zindex ~= nil then
+      count = count + 1
+    end
+  end
+  return count
+end
+
+local function nested_select_keeps_its_session()
+  local inner, reopened = 'unset', false
+  picker.ui_select({ 'a', 'b' }, {}, function()
+    picker.ui_select({ 'c', 'd' }, {}, function(value)
+      inner = value
+    end)
+    reopened = true
+  end)
+  vim.wait(100)
+  picker.open('files')
+  assert(
+    vim.wait(1000, function()
+      return reopened
+    end),
+    'the cancel callback never ran'
+  )
+  vim.wait(50)
+  picker.close()
+  assert(
+    vim.wait(1000, function()
+      return inner ~= 'unset'
+    end),
+    'the picker opened from a cancel callback lost its callback'
+  )
+  assert(inner == nil)
+  vim.wait(100)
+  assert(float_count() == 0, 'closing must not leave picker windows behind')
+end
+
 local function sources_open_paths()
   local dir = vim.fn.tempname()
   vim.fn.mkdir(dir, 'p')
@@ -127,6 +167,13 @@ local function run()
   vim.wait(100)
   assert(vim.api.nvim_get_current_buf() ~= 0)
   picker.close()
+  assert(
+    vim.wait(1000, function()
+      return #cancelled > 0
+    end),
+    'cancel must call on_choice'
+  )
+  vim.wait(100)
   assert(#cancelled == 1, 'cancel must call on_choice exactly once')
   assert(cancelled[1].value == nil)
 
@@ -160,6 +207,7 @@ local function run()
   ui.default_filter({ alpha, beta }, '')
   assert(alpha._match_pos == nil, 'an empty query must clear stale highlight positions')
 
+  nested_select_keeps_its_session()
   sources_open_paths()
   preview_beyond_read_limit()
   git_source_is_async()

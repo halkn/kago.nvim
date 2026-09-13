@@ -91,7 +91,9 @@ function M.close()
     vim.api.nvim_set_current_win(origin)
   end
   if on_cancel then
-    on_cancel()
+    -- Deliver the cancel outside this call: a callback that opens another picker
+    -- would otherwise have its session overwritten by the open that closed this one.
+    vim.schedule(on_cancel)
   end
 end
 
