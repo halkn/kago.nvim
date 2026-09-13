@@ -363,7 +363,7 @@ function source.on_accept(item)
   if item._tree_node and item._tree_node.is_dir then
     return
   end
-  vim.cmd.edit(item.text)
+  vim.cmd.edit({ args = { item.text }, magic = { file = false } })
 end
 
 function source.on_accept_split(item, split_cmd)

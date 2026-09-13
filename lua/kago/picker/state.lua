@@ -21,6 +21,7 @@ local M = {}
 ---@field origin_win integer?
 ---@field origin_buf integer?
 ---@field on_select fun(item: table)?
+---@field on_cancel fun()?
 ---@field augroup integer?
 ---@field source_opts table
 ---@field on_esc fun()?
@@ -47,6 +48,7 @@ function M.new()
     origin_win = nil,
     origin_buf = nil,
     on_select = nil,
+    on_cancel = nil,
     augroup = nil,
     source_opts = {},
     on_esc = nil,
@@ -108,6 +110,7 @@ function M.reset_session(state)
   state.origin_win = nil
   state.origin_buf = nil
   state.on_select = nil
+  state.on_cancel = nil
   state.source_opts = {}
   state.on_esc = nil
   state.on_cursor_moved = nil

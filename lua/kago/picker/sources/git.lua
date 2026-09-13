@@ -80,24 +80,70 @@ local function parse_untracked(stdout, root)
   return items
 end
 
-local function git_output(root, args)
-  local cmd = { 'git', '-C', root }
-  vim.list_extend(cmd, args)
-  local result = vim.system(cmd, { text = true }):wait()
-  return result.code == 0 and vim.trim(result.stdout or '') or nil
+-- The picker owns a single job slot, so a multi-step git lookup runs behind one
+-- handle that forwards the picker's cancellation to whichever step is in flight.
+---@class kago.picker.git.Chain
+---@field cancelled boolean
+---@field job vim.SystemObj?
+local Chain = {}
+Chain.__index = Chain
+
+---@return kago.picker.git.Chain
+local function chain()
+  return setmetatable({ cancelled = false, job = nil }, Chain)
 end
 
-local function resolve_base(root)
-  local head = git_output(root, { 'symbolic-ref', '--short', 'refs/remotes/origin/HEAD' })
-  if head then
-    return head
+function Chain:kill(signal)
+  self.cancelled = true
+  local job = self.job
+  self.job = nil
+  if job then
+    pcall(function()
+      job:kill(signal)
+    end)
   end
-  for _, ref in ipairs({ 'main', 'master', 'origin/main', 'origin/master' }) do
-    if git_output(root, { 'rev-parse', '--verify', '--quiet', ref }) then
-      return ref
+end
+
+function Chain:active()
+  return not self.cancelled
+end
+
+function Chain:run(root, args, on_done)
+  if not self:active() then
+    return
+  end
+  local cmd = { 'git', '-C', root }
+  vim.list_extend(cmd, args)
+  self.job = vim.system(cmd, { text = true }, function(result)
+    if not self:active() then
+      return
     end
-  end
-  return nil
+    self.job = nil
+    on_done(result)
+  end)
+end
+
+local function resolve_base(handle, root, callback)
+  handle:run(root, { 'symbolic-ref', '--short', 'refs/remotes/origin/HEAD' }, function(result)
+    if result.code == 0 then
+      return callback(vim.trim(result.stdout or ''))
+    end
+    local refs = { 'main', 'master', 'origin/main', 'origin/master' }
+    local function try(index)
+      local ref = refs[index]
+      if not ref then
+        return callback(nil)
+      end
+      handle:run(root, { 'rev-parse', '--verify', '--quiet', ref }, function(verified)
+        if verified.code == 0 then
+          callback(ref)
+        else
+          try(index + 1)
+        end
+      end)
+    end
+    try(1)
+  end)
 end
 
 local function load_worktree(root, callback)
@@ -113,35 +159,36 @@ end
 -- Compare the merge base with the working tree, so the list covers both what is
 -- committed on the branch and what is still uncommitted.
 local function load_branch(root, callback)
-  local base = resolve_base(root)
-  if not base then
-    vim.schedule(function()
-      vim.notify(
-        '比較対象のブランチ (main/master) が見つかりません',
-        vim.log.levels.WARN
-      )
-      callback({})
-    end)
-    return nil
-  end
-  local diff_cmd = { 'git', '-C', root, 'diff', '--name-status', '-z', '--merge-base', base }
-  local untracked_cmd = { 'git', '-C', root, 'ls-files', '--others', '--exclude-standard', '-z' }
-  return vim.system(diff_cmd, { text = true }, function(diff)
-    vim.system(untracked_cmd, { text = true }, function(untracked)
-      local changed = diff.code == 0 and diff.stdout or nil
-      local others = untracked.code == 0 and untracked.stdout or nil
+  local handle = chain()
+  resolve_base(handle, root, function(base)
+    if not base then
       vim.schedule(function()
-        local items = changed and parse_name_status(changed, root) or {}
-        if others then
-          vim.list_extend(items, parse_untracked(others, root))
-        end
-        table.sort(items, function(a, b)
-          return a.text < b.text
+        vim.notify(
+          '比較対象のブランチ (main/master) が見つかりません',
+          vim.log.levels.WARN
+        )
+        callback({})
+      end)
+      return
+    end
+    handle:run(root, { 'diff', '--name-status', '-z', '--merge-base', base }, function(diff)
+      handle:run(root, { 'ls-files', '--others', '--exclude-standard', '-z' }, function(untracked)
+        local changed = diff.code == 0 and diff.stdout or nil
+        local others = untracked.code == 0 and untracked.stdout or nil
+        vim.schedule(function()
+          local items = changed and parse_name_status(changed, root) or {}
+          if others then
+            vim.list_extend(items, parse_untracked(others, root))
+          end
+          table.sort(items, function(a, b)
+            return a.text < b.text
+          end)
+          callback(items)
         end)
-        callback(items)
       end)
     end)
   end)
+  return handle
 end
 
 function source.load(_, opts, callback)
@@ -169,7 +216,7 @@ end
 
 function source.on_accept(item)
   if exists(item) then
-    vim.cmd.edit(vim.fn.fnameescape(item.path))
+    vim.cmd.edit({ args = { item.path }, magic = { file = false } })
   end
 end
 

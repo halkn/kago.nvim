@@ -84,10 +84,14 @@ end
 
 function M.close()
   local origin = state.origin_win
+  local on_cancel = state.on_cancel
   picker_state.cleanup(state, close_source)
   win.restore_cursor()
   if origin and vim.api.nvim_win_is_valid(origin) then
     vim.api.nvim_set_current_win(origin)
+  end
+  if on_cancel then
+    on_cancel()
   end
 end
 
@@ -95,6 +99,9 @@ local function accept()
   local item = state.filtered[state.cursor_idx]
   local source = state.source_def
   local on_select = state.on_select
+  if item then
+    state.on_cancel = nil
+  end
   M.close()
   if not item then
     return
@@ -111,6 +118,9 @@ local function accept_with_split(split_cmd)
   local source = state.source_def
   local on_select = state.on_select
   local origin_buf = state.origin_buf
+  if item then
+    state.on_cancel = nil
+  end
   M.close()
   if not item then
     return
@@ -462,6 +472,7 @@ function M.open(source_name, opts)
   state.origin_win = vim.api.nvim_get_current_win()
   state.origin_buf = vim.api.nvim_get_current_buf()
   state.on_select = opts.on_select
+  state.on_cancel = opts.on_cancel
   state.use_preview = source.use_preview or false
   state.source_opts = {}
 

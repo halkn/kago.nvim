@@ -50,7 +50,7 @@ end
 function source.on_accept(item)
   local path, lnum = item.text:match('^([^:]+):(%d+):')
   if path then
-    vim.cmd.edit(path)
+    vim.cmd.edit({ args = { path }, magic = { file = false } })
     local line = tonumber(lnum)
     if line then
       vim.api.nvim_win_set_cursor(0, { math.floor(line), 0 })

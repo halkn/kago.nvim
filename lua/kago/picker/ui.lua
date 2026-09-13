@@ -2,16 +2,28 @@ local M = {}
 
 local match_ns = vim.api.nvim_create_namespace('kago_picker_match')
 
+-- matchfuzzypos copies whatever it is given across the vimscript boundary, so it
+-- only ever sees the match text and an index back into the caller's items.
 function M.default_filter(items, query)
   if query == '' then
+    for _, item in ipairs(items) do
+      item._match_pos = nil
+    end
     return items
   end
-  local result = vim.fn.matchfuzzypos(items, query, { key = 'text' })
-  local matched, positions = result[1] or {}, result[2] or {}
-  for i = 1, #matched do
-    matched[i]._match_pos = positions[i]
+  local keys = {}
+  for i, item in ipairs(items) do
+    keys[i] = { text = item.text, index = i }
   end
-  return matched
+  local result = vim.fn.matchfuzzypos(keys, query, { key = 'text' })
+  local matched, positions = result[1] or {}, result[2] or {}
+  local filtered = {}
+  for i, key in ipairs(matched) do
+    local item = items[math.floor(key.index)]
+    item._match_pos = positions[i]
+    filtered[i] = item
+  end
+  return filtered
 end
 
 function M.get_query(state)

@@ -48,7 +48,7 @@ function source.load(config, opts, callback)
 end
 
 function source.on_accept(item)
-  vim.cmd.edit(item.text)
+  vim.cmd.edit({ args = { item.text }, magic = { file = false } })
 end
 
 function source.on_accept_split(item, split_cmd)

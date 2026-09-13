@@ -20,7 +20,10 @@ function M.show_file(state, path, lnum)
   if ok_binary and raw[1] and raw[1]:find('\0') then
     lines = { '[バイナリファイル]' }
   else
-    local ok, read_lines = pcall(vim.fn.readfile, path, '', 200)
+    -- Read past the requested line, otherwise the cursor below lands on unrelated
+    -- text whenever a match sits beyond the default window.
+    local limit = math.max(200, (lnum or 0) + 100)
+    local ok, read_lines = pcall(vim.fn.readfile, path, '', limit)
     lines = ok and read_lines or { '[読み込みエラー]' }
   end
   for i, line in ipairs(lines) do
