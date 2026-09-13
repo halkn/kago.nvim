@@ -95,6 +95,22 @@ local function preview_beyond_read_limit()
     vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] == 'line 450',
     'preview must point at the requested line'
   )
+  assert(
+    vim.api.nvim_buf_line_count(buf) <= 200,
+    'preview must stay bounded instead of loading everything up to the match'
+  )
+  preview.show_file(state, path, 1)
+  assert(vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1] == 'line 1')
+  assert(vim.api.nvim_win_get_cursor(state.preview_win)[1] == 1)
+
+  -- A file shorter than the window, written without a trailing newline.
+  local short = vim.fn.tempname()
+  vim.fn.writefile({ 'a', 'b', 'c' }, short, 'b')
+  preview.show_file(state, short, 3)
+  row = vim.api.nvim_win_get_cursor(state.preview_win)[1]
+  assert(vim.api.nvim_buf_line_count(buf) == 3, 'short files must keep every line')
+  assert(vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] == 'c')
+  vim.fn.delete(short)
   vim.api.nvim_win_close(state.preview_win, true)
   vim.fn.delete(path)
 end
