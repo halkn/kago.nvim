@@ -4,7 +4,12 @@ local terminal = require('kago.terminal')
 
 local function run()
   terminal.setup()
-  if not pcall(terminal.toggle) then
+  local started, err = pcall(terminal.toggle)
+  if not started then
+    -- E903 is the spawn itself being refused; anything else is a real failure.
+    if not tostring(err):find('E903') then
+      error(err, 0)
+    end
     io.write('terminal test skipped: no pty available\n')
     return
   end
