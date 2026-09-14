@@ -1,0 +1,6 @@
+# machine-local mise overrides
+mise.local.toml
+mise.*.local.toml
+
+# Claude Code worktrees (ephemeral agent checkouts)
+.claude/worktrees/

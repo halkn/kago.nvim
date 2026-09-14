@@ -1,0 +1,52 @@
+[tools]
+neovim = "stable"
+stylua = "latest"
+# Runtime dependencies of the modules under test, so the suite also runs on a bare runner.
+ripgrep = "latest"
+fd = "latest"
+
+[tool_alias]
+emmylua_check = "github:EmmyLuaLs/emmylua-analyzer-rust"
+
+[tools.emmylua_check]
+version = "latest"
+matching = "emmylua_check"
+rename_exe = "emmylua_check"
+
+[tasks.fmt]
+description = "ファイル整形"
+run = "stylua ."
+
+[tasks.fmt-check]
+description = "整形チェック（書き換えなし）"
+run = "stylua --check ."
+
+[tasks.lint]
+description = "Lua の静的解析"
+run = """
+VIMRUNTIME="$(NVIM_LOG_FILE=/dev/null nvim --clean --headless -c 'lua io.write(vim.env.VIMRUNTIME)' +q 2>/dev/null)" \\
+  emmylua_check --warnings-as-errors .
+"""
+
+# Each file runs in its own `--clean` Neovim so a module cannot rely on state another
+# module left behind, and so the suite never sees the user's dotfiles.
+[tasks.test]
+description = "module の単独テスト"
+run = [
+  "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/independence.lua'",
+  "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/boundaries.lua'",
+  "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/editing.lua'",
+  "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/picker.lua'",
+  "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/ui.lua'",
+  "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/explorer.lua'",
+  "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/explorer_git.lua'",
+  "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/explorer_filter.lua'",
+  "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/explorer_preview.lua'",
+  # Last: needs a pty, so it is the entry most likely to be skipped or to fail on a
+  # restricted runner, and everything above still runs first.
+  "NVIM_LOG_FILE=/dev/null nvim --clean --headless -n -i NONE --cmd 'set rtp^=.' -c 'luafile tests/terminal.lua'",
+]
+
+[tasks.check]
+description = "リポジトリ検証（整形チェック・静的解析・テスト）"
+depends = ["fmt-check", "lint", "test"]
