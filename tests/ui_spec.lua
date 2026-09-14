@@ -70,17 +70,21 @@ local function notify_keeps_caller_opts()
   )
 end
 
-local function run()
-  vim.cmd('new')
-  input_reports_empty_confirm()
-  input_cancels_when_window_is_left()
-  notify_keeps_caller_opts()
-end
+describe('input and notifications', function()
+  before_each(function()
+    vim.cmd('new')
+  end)
 
-local ok, err = xpcall(run, debug.traceback)
-if not ok then
-  io.stderr:write(err .. '\n')
-  vim.cmd('cquit 1')
-end
-io.write('ui modules test passed\n')
-vim.cmd('qa!')
+  after_each(function()
+    vim.cmd('stopinsert')
+    vim.cmd('silent! only!')
+    vim.cmd('silent! %bwipeout!')
+  end)
+
+  it('confirms an empty input exactly once', input_reports_empty_confirm)
+  it('cancels input and cleans up when leaving the window', input_cancels_when_window_is_left)
+  it(
+    'does not mutate notification options or merge unrelated notifications',
+    notify_keeps_caller_opts
+  )
+end)

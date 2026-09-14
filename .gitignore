@@ -4,3 +4,6 @@ mise.*.local.toml
 
 # Claude Code worktrees (ephemeral agent checkouts)
 .claude/worktrees/
+
+# Test-only dependencies
+.deps/
