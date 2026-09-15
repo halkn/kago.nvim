@@ -35,31 +35,31 @@ local level_config = {
   [vim.log.levels.ERROR] = {
     icon = ' ',
     hl = 'DiagnosticError',
-    title_hl = 'NotifyTitleError',
+    title_hl = 'KagoNotifyTitleError',
     name = 'ERROR',
   },
   [vim.log.levels.WARN] = {
     icon = ' ',
     hl = 'DiagnosticWarn',
-    title_hl = 'NotifyTitleWarn',
+    title_hl = 'KagoNotifyTitleWarn',
     name = 'WARN',
   },
   [vim.log.levels.INFO] = {
     icon = ' ',
     hl = 'DiagnosticInfo',
-    title_hl = 'NotifyTitleInfo',
+    title_hl = 'KagoNotifyTitleInfo',
     name = 'INFO',
   },
   [vim.log.levels.DEBUG] = {
     icon = ' ',
     hl = 'DiagnosticHint',
-    title_hl = 'NotifyTitleDebug',
+    title_hl = 'KagoNotifyTitleDebug',
     name = 'DEBUG',
   },
   [vim.log.levels.TRACE] = {
     icon = ' ',
     hl = 'DiagnosticHint',
-    title_hl = 'NotifyTitleTrace',
+    title_hl = 'KagoNotifyTitleTrace',
     name = 'TRACE',
   },
 }
