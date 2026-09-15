@@ -184,21 +184,40 @@ require('kago.replace').setup({ mappings = { replace = 'R' } })
 ## Mapping ownership
 
 Editing modules register no mappings unless `mappings` is passed to `setup()`, and no module
-registers a global entrypoint mapping. `tests/boundaries.lua` holds that contract, and
-`tests/independence.lua` holds the one that requiring a module never loads an unrelated one.
+registers a global entrypoint mapping. `tests/boundaries_spec.lua` holds that contract, and
+`tests/independence_spec.lua` holds the one that requiring a module never loads an unrelated one.
 
 ## Development
 
-Tooling is declared in `mise.toml`; tests run against this repository alone and never read the
-user's config.
+Tooling is declared in `mise.toml`. Tests use
+[Plenary's Busted-style runner and luassert](https://github.com/nvim-lua/plenary.nvim/blob/master/TESTS_README.md)
+inside real headless Neovim processes. Plenary is a **test-only dependency**, downloaded into
+`.deps/plenary.nvim` on the first test run and pinned to the commit in `tests/deps.sh`.
 
 ```sh
 mise run fmt        # stylua
 mise run fmt-check  # stylua --check
 mise run lint       # emmylua_check
-mise run test       # module tests
-mise run check      # all of the above
+mise run test       # discover and run tests/**/*_spec.lua
+mise run test tests/editing_spec.lua  # run one spec
+mise run check      # formatting, static analysis and tests
 ```
+
+Each spec runs in a separate Neovim with `tests/minimal_init.lua`, without user configuration,
+installed plugins, ShaDa or swap files. Use `describe` / `it` for named behaviors and
+`before_each` / `after_each` for fixtures and cleanup. Tests exercise mappings, buffers, windows,
+callbacks and external processes; assertions fail the command and CI. The terminal spec requires
+a PTY and fails if one is unavailable.
+
+For value comparisons, use `local eq = require('luassert').same` and `eq(expected, actual)`.
+The initializer preserves Lua's standard `assert` because modules use its return value in Neovim
+API calls. `tests/types/` declares the test APIs for static analysis without importing Plenary's
+global `assert` type into plugin code.
+
+New specs are discovered automatically; no task or CI file list needs updating. Keep cases
+independent, create temporary files in fixtures, and release windows, buffers and process stubs
+in cleanup hooks. A lifecycle scenario can remain one case when its steps intentionally share
+state.
 
 ## License
 

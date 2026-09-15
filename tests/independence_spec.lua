@@ -44,22 +44,16 @@ local function loaded_by(name)
   return vim.split(vim.trim(stdout), ' ', { trimempty = true })
 end
 
-local function run()
+describe('module independence', function()
   for _, name in ipairs(modules) do
-    local prefix = 'kago.' .. name
-    for _, found in ipairs(loaded_by(name)) do
-      assert(
-        found == prefix or found:find(prefix .. '.', 1, true) == 1,
-        ('require("%s") also loaded %s'):format(prefix, found)
-      )
-    end
+    it('loads ' .. name .. ' without unrelated modules', function()
+      local prefix = 'kago.' .. name
+      for _, found in ipairs(loaded_by(name)) do
+        assert(
+          found == prefix or found:find(prefix .. '.', 1, true) == 1,
+          ('require("%s") also loaded %s'):format(prefix, found)
+        )
+      end
+    end)
   end
-end
-
-local ok, err = xpcall(run, debug.traceback)
-if not ok then
-  io.stderr:write(err .. '\n')
-  vim.cmd('cquit 1')
-end
-io.write('independence test passed\n')
-vim.cmd('qa!')
+end)

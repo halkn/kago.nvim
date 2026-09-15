@@ -18,6 +18,6 @@
   },
   "workspace": {
     "workspaceRoots": ["${workspaceFolder}/lua"],
-    "library": ["{env:VIMRUNTIME}/lua"]
+    "library": ["{env:VIMRUNTIME}/lua", "${workspaceFolder}/tests/types"]
   }
 }
