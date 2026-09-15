@@ -70,6 +70,99 @@ local function notify_keeps_caller_opts()
   )
 end
 
+local function notify_owns_title_highlights()
+  local cases = {
+    {
+      level = vim.log.levels.ERROR,
+      diagnostic_hl = 'DiagnosticError',
+      title_hl = 'KagoNotifyTitleError',
+      old_title_hl = 'NotifyTitleError',
+    },
+    {
+      level = vim.log.levels.WARN,
+      diagnostic_hl = 'DiagnosticWarn',
+      title_hl = 'KagoNotifyTitleWarn',
+      old_title_hl = 'NotifyTitleWarn',
+    },
+    {
+      level = vim.log.levels.INFO,
+      diagnostic_hl = 'DiagnosticInfo',
+      title_hl = 'KagoNotifyTitleInfo',
+      old_title_hl = 'NotifyTitleInfo',
+    },
+    {
+      level = vim.log.levels.DEBUG,
+      diagnostic_hl = 'DiagnosticHint',
+      title_hl = 'KagoNotifyTitleDebug',
+      old_title_hl = 'NotifyTitleDebug',
+    },
+    {
+      level = vim.log.levels.TRACE,
+      diagnostic_hl = 'DiagnosticHint',
+      title_hl = 'KagoNotifyTitleTrace',
+      old_title_hl = 'NotifyTitleTrace',
+    },
+  }
+
+  notify.setup()
+  local ids = {}
+  for _, case in ipairs(cases) do
+    local title_hl = vim.api.nvim_get_hl(0, { name = case.title_hl })
+    local diagnostic_hl = vim.api.nvim_get_hl(0, { name = case.diagnostic_hl })
+    assert(title_hl.fg == diagnostic_hl.fg, case.title_hl .. ' must use the diagnostic color')
+    assert(title_hl.bold == true, case.title_hl .. ' must remain bold')
+    assert(
+      vim.tbl_isempty(vim.api.nvim_get_hl(0, { name = case.old_title_hl })),
+      case.old_title_hl .. ' must not be defined'
+    )
+
+    ids[case.level] = notify.notify('message', case.level, {
+      title = case.title_hl,
+      timeout = false,
+    })
+  end
+
+  assert(
+    vim.wait(1000, function()
+      local found = 0
+      for _, win in ipairs(vim.api.nvim_list_wins()) do
+        local cfg = vim.api.nvim_win_get_config(win)
+        if type(cfg.title) == 'table' then
+          found = found + 1
+        end
+      end
+      return found == #cases
+    end),
+    'notifications did not open'
+  )
+
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    local cfg = vim.api.nvim_win_get_config(win)
+    if type(cfg.title) == 'table' then
+      local title = cfg.title[1]
+      local title_hl = title and title[2]
+      local level = title and title[1]:match('KagoNotifyTitle(%a+)')
+      local log_level = level and vim.log.levels[level:upper()]
+      if log_level and ids[log_level] then
+        assert(title_hl == 'KagoNotifyTitle' .. level)
+        ids[log_level] = nil
+      end
+    end
+  end
+  assert(vim.tbl_isempty(ids), 'every notification level must use its Kago title highlight')
+
+  for _, case in ipairs(cases) do
+    vim.api.nvim_set_hl(0, case.title_hl, {})
+  end
+  vim.api.nvim_exec_autocmds('ColorScheme', {})
+  for _, case in ipairs(cases) do
+    local title_hl = vim.api.nvim_get_hl(0, { name = case.title_hl })
+    local diagnostic_hl = vim.api.nvim_get_hl(0, { name = case.diagnostic_hl })
+    assert(title_hl.fg == diagnostic_hl.fg, case.title_hl .. ' must be restored after ColorScheme')
+    assert(title_hl.bold == true, case.title_hl .. ' must remain bold after ColorScheme')
+  end
+end
+
 describe('input and notifications', function()
   before_each(function()
     vim.cmd('new')
@@ -87,4 +180,5 @@ describe('input and notifications', function()
     'does not mutate notification options or merge unrelated notifications',
     notify_keeps_caller_opts
   )
+  it('owns and restores notification title highlights', notify_owns_title_highlights)
 end)
