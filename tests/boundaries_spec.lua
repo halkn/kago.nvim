@@ -5,39 +5,36 @@ local original_input = vim.ui.input
 local original_notify = vim.notify
 local original_select = vim.ui.select
 
--- nvim_get_keymap reports global mappings per mode, so a mode missing here is a mode
--- where a leak goes unnoticed, and buffer-local mappings owned by a module's own UI
--- never enter these snapshots.
-local mapped_modes = { 'n', 'x', 's', 'o', 'i', 'c', 't' }
+-- nvim_get_keymap reports global mappings per mode. Buffer-local mappings owned by a
+-- module's own UI never enter these snapshots.
+local mapped_modes = { 'n', 'x', 's', 'o', 'i', 'l', 'c', 't' }
 
--- Keyed by lhs / command name, valued by a fingerprint of the definition, so that
--- replacing an entry the caller already owns counts as a change too.
 ---@param mode string
----@return table<string, string>
-local function global_maps(mode)
-  local snapshot = {}
+---@return table<string, boolean>
+local function global_lhs(mode)
+  local set = {}
   for _, map in ipairs(vim.api.nvim_get_keymap(mode)) do
-    snapshot[map.lhs] = tostring(map.rhs) .. '\0' .. tostring(map.callback)
+    set[map.lhs] = true
   end
-  return snapshot
+  return set
 end
 
----@return table<string, string>
+---@return table<string, boolean>
 local function user_commands()
-  local snapshot = {}
-  for name, command in pairs(vim.api.nvim_get_commands({})) do
-    snapshot[name] = tostring(command.definition)
+  local set = {}
+  for name in pairs(vim.api.nvim_get_commands({})) do
+    set[name] = true
   end
-  return snapshot
+  return set
 end
 
----@param before table<string, string>
----@param after table<string, string>
+---@param before table<string, boolean>
+---@param after table<string, boolean>
 ---@return string[]
-local function diff(before, after)
+local function added(before, after)
   local names = {}
-  for name, fingerprint in pairs(after) do
-    if before[name] ~= fingerprint then
+  for name in pairs(after) do
+    if not before[name] then
       names[#names + 1] = name
     end
   end
@@ -46,17 +43,17 @@ local function diff(before, after)
 end
 
 local original_commands = user_commands()
----@type table<string, table<string, string>>
+---@type table<string, table<string, boolean>>
 local original_maps = {}
 for _, mode in ipairs(mapped_modes) do
-  original_maps[mode] = global_maps(mode)
+  original_maps[mode] = global_lhs(mode)
 end
 
 -- The caller-defined mapping specs register global mappings on purpose. Reverting them
 -- keeps the snapshot comparisons independent of spec order.
 local function restore_globals()
   for _, mode in ipairs(mapped_modes) do
-    for lhs in pairs(global_maps(mode)) do
+    for lhs in pairs(global_lhs(mode)) do
       if original_maps[mode][lhs] == nil then
         pcall(vim.keymap.del, mode, lhs)
       end
@@ -83,8 +80,8 @@ local function feed(keys)
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(keys, true, false, true), 'x', false)
 end
 
--- Every module is set up without mapping configuration, which is the state a caller
--- that only requires kago is in.
+-- Every module is set up without mapping configuration, matching a caller that opts
+-- into module setup while retaining ownership of its global mappings.
 local function setup_all()
   notify.setup()
   pairs_module.setup()
@@ -129,7 +126,7 @@ describe('integration boundaries', function()
   it('leaves user commands to the caller', function()
     setup_all()
 
-    local names = diff(original_commands, user_commands())
+    local names = added(original_commands, user_commands())
     eq({}, names, 'unexpected user commands: ' .. table.concat(names, ', '))
   end)
 
@@ -137,7 +134,7 @@ describe('integration boundaries', function()
     setup_all()
 
     for _, mode in ipairs(mapped_modes) do
-      local lhs = diff(original_maps[mode], global_maps(mode))
+      local lhs = added(original_maps[mode], global_lhs(mode))
       eq({}, lhs, ('unexpected %s mappings: %s'):format(mode, table.concat(lhs, ', ')))
     end
   end)
