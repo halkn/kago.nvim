@@ -8,6 +8,11 @@ function describe(name, body) end
 ---@param body fun()
 function it(name, body) end
 
+-- Declared only; the body is never run.
+---@param name string
+---@param body fun()
+function pending(name, body) end
+
 ---@param body fun()
 function before_each(body) end
 
