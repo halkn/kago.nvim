@@ -207,7 +207,9 @@ Each spec runs in a separate Neovim with `tests/minimal_init.lua`, without user 
 installed plugins, ShaDa or swap files. Use `describe` / `it` for named behaviors and
 `before_each` / `after_each` for fixtures and cleanup. Tests exercise mappings, buffers, windows,
 callbacks and external processes; assertions fail the command and CI. The terminal spec requires
-a PTY and fails if one is unavailable.
+a PTY: `tests/pty_probe.lua` reports whether this environment can spawn one, and the spec is
+reported pending when the spawn is refused. Every other terminal error stays a failure, so a
+pending terminal spec means that module went unverified on this machine.
 
 For value comparisons, use `local eq = require('luassert').same` and `eq(expected, actual)`.
 The initializer preserves Lua's standard `assert` because modules use its return value in Neovim
