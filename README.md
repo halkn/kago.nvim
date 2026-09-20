@@ -189,19 +189,18 @@ registers a global entrypoint mapping. `tests/boundaries_spec.lua` holds that co
 
 ## Development
 
-Tooling is declared in `mise.toml`. Tests use
+Development requires Neovim, StyLua, EmmyLua Check and ripgrep on `PATH`. Tests use
 [Plenary's Busted-style runner and luassert](https://github.com/nvim-lua/plenary.nvim/blob/master/TESTS_README.md)
 inside real headless Neovim processes. Plenary is a **test-only dependency**, downloaded into
 `.deps/plenary.nvim` on the first test run and pinned to the commit in `tests/deps.sh`.
 
 ```sh
-mise run fmt        # stylua
-mise run fmt-check  # stylua --check
-mise run lint       # emmylua_check
-mise run test       # discover and run tests/**/*_spec.lua
-mise run test tests/editing_spec.lua  # run one spec
-mise run test-minimum  # run tests with the minimum supported Neovim
-mise run check      # formatting, static analysis and tests
+make fmt                              # stylua
+make fmt-check                        # stylua --check
+make lint                             # emmylua_check
+make test                             # discover and run tests/**/*_spec.lua
+make test TEST=tests/editing_spec.lua # run one spec
+make check                            # formatting, static analysis and tests
 ```
 
 Each spec runs in a separate Neovim with `tests/minimal_init.lua`, without user configuration,
