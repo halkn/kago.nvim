@@ -27,7 +27,8 @@ jobs:
       - name: Install runtime dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes ripgrep
+          sudo apt-get install --yes fd-find ripgrep
+          sudo ln --symbolic /usr/bin/fdfind /usr/local/bin/fd
       # A bare runner has none of the user's dotfiles, so this run also checks that
       # the suite stands on its own.
       - run: make check
@@ -43,5 +44,6 @@ jobs:
       - name: Install runtime dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes ripgrep
+          sudo apt-get install --yes fd-find ripgrep
+          sudo ln --symbolic /usr/bin/fdfind /usr/local/bin/fd
       - run: make test

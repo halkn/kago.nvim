@@ -189,7 +189,7 @@ registers a global entrypoint mapping. `tests/boundaries_spec.lua` holds that co
 
 ## Development
 
-Development requires Neovim, StyLua, EmmyLua Check and ripgrep on `PATH`. Tests use
+Development requires Neovim, StyLua, EmmyLua Check, ripgrep and fd on `PATH`. Tests use
 [Plenary's Busted-style runner and luassert](https://github.com/nvim-lua/plenary.nvim/blob/master/TESTS_README.md)
 inside real headless Neovim processes. Plenary is a **test-only dependency**, downloaded into
 `.deps/plenary.nvim` on the first test run and pinned to the commit in `tests/deps.sh`.
