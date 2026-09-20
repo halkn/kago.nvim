@@ -208,8 +208,12 @@ installed plugins, ShaDa or swap files. Use `describe` / `it` for named behavior
 `before_each` / `after_each` for fixtures and cleanup. Tests exercise mappings, buffers, windows,
 callbacks and external processes; assertions fail the command and CI. The terminal spec requires
 a PTY: `tests/pty_probe.lua` reports whether this environment can spawn one, and the spec is
-reported pending when the spawn is refused. Every other terminal error stays a failure, so a
-pending terminal spec means that module went unverified on this machine.
+reported pending when the spawn is refused locally. CI sets `KAGO_TEST_REQUIRE_PTY=1`, so a
+refused spawn fails instead of leaving the terminal module unverified. Every other terminal error
+also stays a failure.
+
+CI runs the complete check with stable Neovim and the test suite again with Neovim 0.12.0, the
+minimum supported version.
 
 For value comparisons, use `local eq = require('luassert').same` and `eq(expected, actual)`.
 The initializer preserves Lua's standard `assert` because modules use its return value in Neovim

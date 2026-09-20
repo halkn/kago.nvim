@@ -27,6 +27,9 @@ local function pty_available()
   if not refused or not refused:find('E903', 1, true) then
     error('pty probe did not report a refused spawn: ' .. out, 0)
   end
+  if vim.env.KAGO_TEST_REQUIRE_PTY == '1' then
+    error('pty is required but unavailable: ' .. refused, 0)
+  end
   print('terminal specs pending, ' .. refused)
   return false
 end
