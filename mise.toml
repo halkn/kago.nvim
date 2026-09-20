@@ -37,6 +37,15 @@ description = "Plenary/Busted の機能・回帰テスト（任意で spec の�
 depends = ["test-deps"]
 run = "NVIM_LOG_FILE=/dev/null nvim --headless -n -i NONE -u tests/minimal_init.lua -l tests/run.lua"
 
+[tasks.test-minimum]
+description = "最低対応版 Neovim での機能・回帰テスト"
+depends = ["test-deps"]
+tools.neovim = "0.12.0"
+run = [
+  "nvim --version",
+  "NVIM_LOG_FILE=/dev/null nvim --headless -n -i NONE -u tests/minimal_init.lua -l tests/run.lua",
+]
+
 [tasks.check]
 description = "リポジトリ検証（整形チェック・静的解析・テスト）"
 depends = ["fmt-check", "lint", "test"]

@@ -200,6 +200,7 @@ mise run fmt-check  # stylua --check
 mise run lint       # emmylua_check
 mise run test       # discover and run tests/**/*_spec.lua
 mise run test tests/editing_spec.lua  # run one spec
+mise run test-minimum  # run tests with the minimum supported Neovim
 mise run check      # formatting, static analysis and tests
 ```
 
