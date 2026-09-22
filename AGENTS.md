@@ -24,5 +24,5 @@
 
 - behavior change には regression test を追加する。
 - 現在の plan / issue に無い大規模リファクタを、他の変更と同時に行わない。
-- 終了前に `mise run check`（整形チェック・静的解析・module テスト）を通す。
+- 終了前に `make check`（整形チェック・静的解析・module テスト）を通す。
 - 静的解析の警告は suppression で隠さず、型 annotation で解決する。

@@ -13,16 +13,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: jdx/mise-action@v4
+      - uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+      - uses: JohnnyMorganz/stylua-action@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: 2.5.2
+          args: false
+      - name: Install static analyzer
+        run: cargo install emmylua_check --version 0.25.1 --locked
+      - name: Install runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes fd-find ripgrep
+          sudo ln --symbolic /usr/bin/fdfind /usr/local/bin/fd
       # A bare runner has none of the user's dotfiles, so this run also checks that
       # the suite stands on its own.
-      - run: mise run check
+      - run: make check
 
   test-minimum-neovim:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: jdx/mise-action@v4
+      - uses: rhysd/action-setup-vim@v1
         with:
-          install_args: --include-task-tools
-      - run: mise run test-minimum
+          neovim: true
+          version: v0.12.0
+      - name: Install runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes fd-find ripgrep
+          sudo ln --symbolic /usr/bin/fdfind /usr/local/bin/fd
+      - run: make test
