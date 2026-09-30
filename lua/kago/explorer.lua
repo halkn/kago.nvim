@@ -1,18 +1,10 @@
 local M = {}
-local icon_ns = vim.api.nvim_create_namespace('kago_explorer_icons')
+local entries = require('kago.explorer._internal.entries')
+local view = require('kago.explorer._internal.view')
+local bindings = require('kago.explorer._internal.bindings')
 local git = require('kago.explorer.git')
-local git_ns = vim.api.nvim_create_namespace('kago_explorer_git')
 local filter = require('kago.explorer.filter')
 local preview = require('kago.explorer.preview')
-
-local function file_icon(name)
-  local ok, icons = pcall(require, 'nvim-web-devicons')
-  if ok then
-    local icon, hl = icons.get_icon(name, vim.fn.fnamemodify(name, ':e'), { default = true })
-    return icon or '', hl or 'Normal'
-  end
-  return '', 'Normal'
-end
 
 ---@class kago.explorer.Entry
 ---@field path string
@@ -83,34 +75,6 @@ local function update_preview(state)
 end
 
 ---@param state kago.explorer.State
-local function render_git(state)
-  local buf = state.buf
-  if not visible(state) or not buf or not vim.api.nvim_buf_is_valid(buf) then
-    return
-  end
-  vim.api.nvim_buf_clear_namespace(buf, git_ns, 0, -1)
-  for row, entry in ipairs(state.entries) do
-    local status = state.git_status and git.status(state.git_status, entry.path)
-    if status and status ~= '  ' then
-      vim.api.nvim_buf_set_extmark(buf, git_ns, row - 1, 0, {
-        virt_text = git.chunks(status),
-        virt_text_pos = 'right_align',
-        hl_mode = 'combine',
-      })
-      if status == '!!' then
-        -- The root row carries no name range, and while filtering it holds the query
-        -- header rather than the root path, so fall back to the rendered line.
-        local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ''
-        vim.api.nvim_buf_set_extmark(buf, git_ns, row - 1, entry.name_col or 0, {
-          end_col = entry.name_end or #line,
-          hl_group = 'NonText',
-        })
-      end
-    end
-  end
-end
-
----@param state kago.explorer.State
 local function refresh_git(state)
   if state.git_cancel then
     state.git_cancel()
@@ -118,7 +82,7 @@ local function refresh_git(state)
   state.git_cancel = git.fetch(state.root, function(statuses, err)
     state.git_cancel = nil
     state.git_status = statuses
-    render_git(state)
+    view.render_git(state)
     if err then
       notify(err)
     end
@@ -151,117 +115,9 @@ end
 
 ---@param state kago.explorer.State
 local function render(state)
-  local buf, win = assert(state.buf), assert(state.win)
-  local entries = {
-    { path = state.root, name = state.root, dir = true, link = false, depth = 0 },
-  }
-  local lines = { state.root }
-  local search = state.filter
-  local filtering = search and search.query ~= ''
-  if search and filtering then
-    local status = search.error
-      or (search.loading and 'searching…' or (search.count .. ' matches'))
-    lines[1] = '/' .. search.query:gsub('[%c]', ' ') .. ' [' .. status:gsub('[%c]', ' ') .. ']'
-  end
-  local highlights = {}
-  ---@param path string
-  ---@param depth integer
-  local function scan(path, depth)
-    local children = {}
-    if search and filtering then
-      children = search.children[path] or {}
-    else
-      local handle, err = vim.uv.fs_scandir(path)
-      if not handle then
-        notify(err)
-        return
-      end
-      while true do
-        local name, kind = vim.uv.fs_scandir_next(handle)
-        if not name then
-          break
-        end
-        if state.hidden or name:sub(1, 1) ~= '.' then
-          local child_path = vim.fs.joinpath(path, name)
-          if not kind then
-            local stat = vim.uv.fs_lstat(child_path)
-            kind = stat and stat.type or 'unknown'
-          end
-          children[#children + 1] = {
-            path = child_path,
-            name = name,
-            dir = kind == 'directory',
-            link = kind == 'link',
-            depth = depth,
-          }
-        end
-      end
-    end
-    table.sort(children, function(a, b)
-      if a.dir ~= b.dir then
-        return a.dir
-      end
-      return a.name < b.name
-    end)
-    for _, entry in ipairs(children) do
-      entries[#entries + 1] = entry
-      local expanded = filtering or state.expanded[entry.path]
-      local marker = entry.dir and (expanded and '▾ ' or '▸ ') or '  '
-      local name = entry.name:gsub('[%c]', function(c)
-        return string.format('\\x%02x', c:byte())
-      end)
-      local icon, hl
-      if entry.dir then
-        icon, hl = expanded and '' or '', 'Directory'
-      else
-        icon, hl = file_icon(entry.name)
-      end
-      local prefix = string.rep('  ', depth - 1) .. marker
-      entry.name_col = #prefix + #icon + 1
-      entry.name_end = entry.name_col + #name
-      highlights[#highlights + 1] = {
-        row = #lines,
-        col = #prefix,
-        end_col = #prefix + #icon,
-        hl = hl,
-      }
-      lines[#lines + 1] = prefix .. icon .. ' ' .. name .. (entry.link and ' @' or '')
-      if entry.dir and expanded then
-        scan(entry.path, depth + 1)
-      end
-    end
-  end
-  scan(state.root, 1)
-  state.entries = entries
-  vim.bo[buf].modifiable = true
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-  vim.bo[buf].modifiable = false
-  vim.api.nvim_buf_clear_namespace(buf, icon_ns, 0, -1)
-  for _, highlight in ipairs(highlights) do
-    vim.api.nvim_buf_set_extmark(buf, icon_ns, highlight.row, highlight.col, {
-      end_col = highlight.end_col,
-      hl_group = highlight.hl,
-    })
-  end
-  local selected = state.selected
-  local row = 1
-  while true do
-    local found = false
-    for i, entry in ipairs(entries) do
-      if entry.path == selected then
-        row, found = i, true
-        break
-      end
-    end
-    local parent = vim.fs.dirname(selected)
-    if found or not parent or parent == selected then
-      break
-    end
-    selected = parent
-  end
-  vim.api.nvim_win_set_cursor(win, { row, 0 })
+  state.entries = entries.collect(state, notify)
+  view.render(state)
   remember(state)
-  render_git(state)
   update_preview(state)
 end
 
@@ -384,74 +240,68 @@ local function accept(state)
 end
 
 ---@param state kago.explorer.State
-local function bind(state)
-  local function map(key, callback, desc)
-    vim.keymap.set('n', key, callback, { buffer = state.buf, silent = true, desc = desc })
-  end
-  map('j', 'j', 'Next entry')
-  map('k', 'k', 'Previous entry')
-  for _, key in ipairs({ '<CR>', 'l' }) do
-    map(key, function()
+---@return kago.explorer.Actions
+local function build_actions(state)
+  return {
+    accept = function()
       accept(state)
-    end, 'Open file or toggle directory')
-  end
-  map('h', function()
-    local entry = current(state)
-    if not entry then
-      return
-    end
-    if
-      entry.dir
-      and state.expanded[entry.path]
-      and not (state.filter and state.filter.query ~= '')
-    then
-      state.expanded[entry.path] = nil
-      state.selected = entry.path
-    else
-      state.selected = vim.fs.dirname(entry.path) or state.root
-    end
-    render(state)
-  end, 'Collapse directory or select parent')
-  map('<BS>', function()
-    local old = state.root
-    if change_root(state, vim.fs.dirname(old) or old) then
-      state.selected = old
+    end,
+    collapse = function()
+      local entry = current(state)
+      if not entry then
+        return
+      end
+      if
+        entry.dir
+        and state.expanded[entry.path]
+        and not (state.filter and state.filter.query ~= '')
+      then
+        state.expanded[entry.path] = nil
+        state.selected = entry.path
+      else
+        state.selected = vim.fs.dirname(entry.path) or state.root
+      end
       render(state)
-    end
-  end, 'Go to parent root')
-  map('.', function()
-    local entry = current(state)
-    if entry and entry.dir and change_root(state, entry.path) then
-      state.selected = entry.path
+    end,
+    parent_root = function()
+      local old = state.root
+      if change_root(state, vim.fs.dirname(old) or old) then
+        state.selected = old
+        render(state)
+      end
+    end,
+    set_root = function()
+      local entry = current(state)
+      if entry and entry.dir and change_root(state, entry.path) then
+        state.selected = entry.path
+        render(state)
+      end
+    end,
+    toggle_hidden = function()
+      remember(state)
+      state.hidden = not state.hidden
+      if state.filter then
+        state.filter:reload(state.root, state.hidden)
+      end
       render(state)
-    end
-  end, 'Set explorer root')
-  map('H', function()
-    remember(state)
-    state.hidden = not state.hidden
-    if state.filter then
-      state.filter:reload(state.root, state.hidden)
-    end
-    render(state)
-  end, 'Toggle hidden files')
-  map('u', function()
-    remember(state)
-    if state.preview then
-      state.preview:hide()
-    end
-    if state.filter then
-      state.filter:reload(state.root, state.hidden)
-    end
-    render(state)
-    refresh_git(state)
-  end, 'Refresh explorer')
-  map('P', function()
-    state.preview = state.preview or preview.new()
-    state.preview.enabled = not state.preview.enabled
-    update_preview(state)
-  end, 'Toggle file preview')
-  for key, delta in pairs({ ['<C-d>'] = 1, ['<C-u>'] = -1 }) do
-    map(key, function()
+    end,
+    refresh = function()
+      remember(state)
+      if state.preview then
+        state.preview:hide()
+      end
+      if state.filter then
+        state.filter:reload(state.root, state.hidden)
+      end
+      render(state)
+      refresh_git(state)
+    end,
+    toggle_preview = function()
+      state.preview = state.preview or preview.new()
+      state.preview.enabled = not state.preview.enabled
+      update_preview(state)
+    end,
+    scroll = function(delta, key)
       if state.preview and state.preview.enabled then
         state.preview:scroll(delta)
       else
@@ -460,18 +310,18 @@ local function bind(state)
           bang = true,
         })
       end
-    end, 'Scroll preview or explorer')
-  end
-  map('/', function()
-    open_filter(state, function()
-      accept(state)
-    end)
-  end, 'Filter explorer paths')
-  map('<Esc>', function()
-    reset_filter(state)
-    render(state)
-  end, 'Clear explorer filter')
-  map('q', M.close, 'Close explorer')
+    end,
+    filter = function()
+      open_filter(state, function()
+        accept(state)
+      end)
+    end,
+    clear_filter = function()
+      reset_filter(state)
+      render(state)
+    end,
+    close = M.close,
+  }
 end
 
 ---@param opts? { root?: string }
@@ -541,7 +391,7 @@ function M.open(opts)
   wo.winfixwidth = true
   wo.spell = false
   wo.list = false
-  bind(state)
+  bindings.bind(buf, build_actions(state))
   render(state)
   refresh_git(state)
 end

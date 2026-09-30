@@ -1,8 +1,5 @@
 local M = {}
 
--- Every field starts nil and is filled in by M.open(), so without this class the
--- analyzer infers the whole session state as nil and reports every guard against
--- it as dead code.
 ---@class kago.picker.State
 ---@field prompt_buf integer?
 ---@field prompt_win integer?
@@ -11,19 +8,19 @@ local M = {}
 ---@field preview_buf integer?
 ---@field preview_win integer?
 ---@field source_name string?
----@field source_def table?
----@field all_items table[]
----@field filtered table[]
+---@field source_def kago.picker.Source?
+---@field all_items kago.picker.Item[]
+---@field filtered kago.picker.Item[]
 ---@field cursor_idx integer
 ---@field use_preview boolean
----@field async_job table?
+---@field async_job kago.picker.Job?
 ---@field debounce_timer uv.uv_timer_t?
 ---@field origin_win integer?
 ---@field origin_buf integer?
----@field on_select fun(item: table)?
+---@field on_select fun(item: kago.picker.Item)?
 ---@field on_cancel fun()?
 ---@field augroup integer?
----@field source_opts table
+---@field source_opts kago.picker.SourceOptions
 ---@field on_esc fun()?
 ---@field on_cursor_moved fun(idx: integer)?
 ---@field generation integer
@@ -57,11 +54,13 @@ function M.new()
   }
 end
 
+---@param state kago.picker.State
 function M.begin(state)
   state.generation = state.generation + 1
   return state.generation
 end
 
+---@param state kago.picker.State
 function M.cancel_timer(state)
   local timer = state.debounce_timer
   if timer then
@@ -71,11 +70,14 @@ function M.cancel_timer(state)
   end
 end
 
+---@param state kago.picker.State
+---@param timer uv.uv_timer_t
 function M.set_timer(state, timer)
   M.cancel_timer(state)
   state.debounce_timer = timer
 end
 
+---@param state kago.picker.State
 function M.cancel_job(state)
   local job = state.async_job
   if job then
@@ -86,6 +88,8 @@ function M.cancel_job(state)
   end
 end
 
+---@param state kago.picker.State
+---@param job kago.picker.Job?
 function M.set_job(state, job)
   if state.async_job ~= job then
     M.cancel_job(state)
@@ -93,6 +97,7 @@ function M.set_job(state, job)
   state.async_job = job
 end
 
+---@param state kago.picker.State
 function M.clear_augroup(state)
   if state.augroup then
     pcall(vim.api.nvim_del_augroup_by_id, state.augroup)
@@ -100,6 +105,7 @@ function M.clear_augroup(state)
   end
 end
 
+---@param state kago.picker.State
 function M.reset_session(state)
   state.source_name = nil
   state.source_def = nil
@@ -116,6 +122,8 @@ function M.reset_session(state)
   state.on_cursor_moved = nil
 end
 
+---@param state kago.picker.State
+---@param on_close fun(source: kago.picker.Source?)?
 function M.cleanup(state, on_close)
   M.clear_augroup(state)
   M.cancel_timer(state)

@@ -1,5 +1,7 @@
+local file_open = require('kago.picker._internal.open')
 local icons = require('kago.picker.icons')
 
+---@class kago.picker.GitSource: kago.picker.Source
 local source = {
   name = 'git',
   use_preview = true,
@@ -18,6 +20,7 @@ end
 
 -- Keep git's own root-relative path as the match target so the list looks the
 -- same from any cwd, and open through the absolute path.
+---@return kago.picker.GitItem
 local function make_item(status, path, root)
   local icon = icons.get_icon(path)
   return {
@@ -49,7 +52,7 @@ end
 
 -- `--name-status -z` emits status and path as separate fields; rename and copy
 -- statuses are followed by the old path and then the new one.
----@return table[]
+---@return kago.picker.GitItem[]
 local function parse_name_status(stdout, root)
   local items = {}
   local fields = vim.split(stdout, '\0', { plain = true })
@@ -93,6 +96,7 @@ local function chain()
   return setmetatable({ cancelled = false, job = nil }, Chain)
 end
 
+---@param signal integer
 function Chain:kill(signal)
   self.cancelled = true
   local job = self.job
@@ -206,6 +210,7 @@ function source.load(_, opts, callback)
   return load_worktree(root, callback)
 end
 
+---@param item kago.picker.GitItem
 local function exists(item)
   if vim.uv.fs_stat(item.path) then
     return true
@@ -214,18 +219,21 @@ local function exists(item)
   return false
 end
 
+---@param item kago.picker.GitItem
 function source.on_accept(item)
   if exists(item) then
-    vim.cmd.edit({ args = { item.path }, magic = { file = false } })
+    file_open.open(item.path)
   end
 end
 
+---@param item kago.picker.GitItem
 function source.on_accept_split(item, split_cmd)
   if exists(item) then
-    vim.cmd(split_cmd .. ' ' .. vim.fn.fnameescape(item.path))
+    file_open.open(item.path, split_cmd)
   end
 end
 
+---@param item kago.picker.GitItem
 function source.update_preview(item, preview_file)
   if not vim.uv.fs_stat(item.path) then
     return 'clear'

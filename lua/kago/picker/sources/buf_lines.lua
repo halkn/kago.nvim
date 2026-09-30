@@ -1,10 +1,11 @@
+---@class kago.picker.BufLinesSource: kago.picker.Source
 local source = {
   name = 'buf_lines',
   use_preview = false,
 }
 
 function source.load(_, opts, callback)
-  local lines = vim.api.nvim_buf_get_lines(opts.origin_buf, 0, -1, false)
+  local lines = vim.api.nvim_buf_get_lines(assert(opts.origin_buf), 0, -1, false)
   local items = {}
   for i, line in ipairs(lines) do
     table.insert(items, { text = line, lnum = i })
