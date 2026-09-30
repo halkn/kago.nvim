@@ -74,18 +74,32 @@ local function sources_open_paths()
   local dir = tempname()
   vim.fn.mkdir(dir, 'p')
   dir = assert(vim.uv.fs_realpath(dir))
-  local path = dir .. '/pct%.txt'
-  vim.fn.writefile({ 'contents' }, path)
+  local path = dir .. '/space % # |.txt'
+  vim.fn.writefile({ 'first', 'second', 'third' }, path)
 
   for name, item in pairs({
     files = { text = path },
     tree = { text = path, _tree_node = { is_dir = false } },
     select = { text = path },
-    grep = { text = path .. ':1:contents' },
+    grep = { text = path .. ':2:second' },
+    git = { text = path, path = path },
+    buffers = { text = path },
   }) do
     vim.cmd('enew!')
     require('kago.picker.sources.' .. name).on_accept(item)
     assert(vim.api.nvim_buf_get_name(0) == path, name .. ' opened ' .. vim.api.nvim_buf_get_name(0))
+    if name == 'grep' then
+      eq(2, vim.api.nvim_win_get_cursor(0)[1])
+    end
+    for _, split_cmd in ipairs({ 'split', 'vsplit' }) do
+      vim.cmd('enew!')
+      require('kago.picker.sources.' .. name).on_accept_split(item, split_cmd)
+      eq(path, vim.api.nvim_buf_get_name(0))
+      if name == 'grep' then
+        eq(2, vim.api.nvim_win_get_cursor(0)[1])
+      end
+      vim.cmd.close()
+    end
   end
   vim.cmd('enew!')
   vim.fn.delete(dir, 'rf')
@@ -146,7 +160,7 @@ local function git_source_is_async()
 
   local ok, err = pcall(function()
     local delivered = false
-    local handle = git.load({}, { scope = 'branch' }, function()
+    local handle = git.load(picker.config, { scope = 'branch' }, function()
       delivered = true
     end)
     assert(handle, 'branch scope must return a cancellable handle')
@@ -164,7 +178,7 @@ local function git_source_is_async()
     assert(not delivered, 'cancelled chain delivered items')
 
     pending = {}
-    handle = assert(git.load({}, { scope = 'branch' }, function()
+    handle = assert(git.load(picker.config, { scope = 'branch' }, function()
       delivered = true
     end))
     pending[1].callback({ code = 0, stdout = 'origin/main\n' })
@@ -257,7 +271,24 @@ describe('picker', function()
   end)
 
   it('preserves a select session opened by a cancel callback', nested_select_keeps_its_session)
-  it('opens paths containing percent signs', sources_open_paths)
+  it('opens literal paths and requested lines normally and in splits', sources_open_paths)
+  it('selects existing buffers without reloading their contents', function()
+    local buffers = require('kago.picker.sources.buffers')
+    local buf = vim.api.nvim_create_buf(true, false)
+    vim.api.nvim_buf_set_name(buf, tempname())
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { 'unsaved contents' })
+    local item = { text = vim.api.nvim_buf_get_name(buf), buf = buf }
+    for _, split_cmd in ipairs({ 'edit', 'split', 'vsplit' }) do
+      vim.cmd('enew!')
+      if split_cmd == 'edit' then
+        buffers.on_accept(item)
+      else
+        buffers.on_accept_split(item, split_cmd)
+      end
+      eq(buf, vim.api.nvim_get_current_buf())
+      eq({ 'unsaved contents' }, vim.api.nvim_buf_get_lines(buf, 0, -1, false))
+    end
+  end)
   it('previews requested lines beyond the read limit', preview_beyond_read_limit)
   it('loads Git asynchronously and cancels stale results', git_source_is_async)
 end)

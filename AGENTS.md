@@ -12,9 +12,14 @@
 
 - shared abstraction は先回りして作らない。複数 module に似たコードがあっても、実際に同じ理由で
   同時に変更される実績が出るまで重複のままにする。必要になった場合も最初は `kago._internal.*`
-  のような private namespace に置く。
-- module が所有する runtime identifier は、augroup・extmark namespace なら `kago`、
-  operatorfunc 用 global なら `_kago` で始める。
+  のような private namespace に置く。単一 module 内で使う処理は `kago.<module>._internal.*`
+  に置き、依存をその module 内に閉じる。
+- private であることは `local` または `_internal` namespace で示す。local 変数・関数に
+  private を表すためだけの `_` 接頭辞は付けない。
+- 新規の runtime identifier は highlight なら `Kago<Module><Role>`、filetype なら
+  `kago-<module>-<role>`、augroup・extmark namespace なら `kago_<module>_<role>`、
+  operatorfunc 用 global なら `_kago_<module>_<action>` とする。role が不要なら省略する。
+  既存名はユーザー設定との接点として扱い、規則に揃えるためだけに改名しない。
 
 ## 検証
 

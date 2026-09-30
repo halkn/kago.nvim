@@ -1,6 +1,8 @@
+local file_open = require('kago.picker._internal.open')
 local icons = require('kago.picker.icons')
 local picker_win = require('kago.picker.window')
 
+---@class kago.picker.TreeSource: kago.picker.Source
 local source = {
   name = 'tree',
   use_preview = true,
@@ -8,10 +10,11 @@ local source = {
 }
 
 ---@class kago.picker.TreeState
----@field root table?
+---@field root kago.picker.TreeNode?
 ---@field open_dirs table<string, boolean?>
----@field all_files table[]?
+---@field all_files kago.picker.Item[]?
 ---@field nav_mode boolean
+---@field generation integer
 
 ---@type kago.picker.TreeState
 local tree_state = {
@@ -19,8 +22,10 @@ local tree_state = {
   open_dirs = {},
   all_files = nil,
   nav_mode = false,
+  generation = 0,
 }
 
+---@param node kago.picker.TreeNode
 local function ensure_children(node)
   if node.children ~= nil then
     return
@@ -58,6 +63,7 @@ local function ensure_children(node)
   end)
 end
 
+---@return kago.picker.Item[]
 local function flatten()
   local items = {}
   local function walk(node, depth)
@@ -92,6 +98,8 @@ local function flatten()
   return items
 end
 
+---@param matched_items kago.picker.Item[]
+---@return kago.picker.Item[]
 local function build_filtered(matched_items)
   local root = { children = {} }
   local node_map = { [''] = root }
@@ -179,6 +187,8 @@ end
 -- The tree renders itself through ctx.set_items() in on_open, so the loader only
 -- fills tree_state.all_files and never reports back.
 function source.load(config, _, _callback)
+  tree_state.generation = tree_state.generation + 1
+  local generation = tree_state.generation
   local cmd = { 'rg', '--files', '--hidden' }
   for _, glob in ipairs(config.exclude_globs) do
     vim.list_extend(cmd, { '--glob', glob })
@@ -191,13 +201,16 @@ function source.load(config, _, _callback)
       end
     end
     vim.schedule(function()
-      tree_state.all_files = items
+      if tree_state.generation == generation then
+        tree_state.all_files = items
+      end
     end)
   end)
   return job
 end
 
 function source.on_open(ctx)
+  tree_state.generation = tree_state.generation + 1
   tree_state.root = { name = '.', path = '.', is_dir = true, children = nil }
   tree_state.open_dirs = {}
   tree_state.all_files = nil
@@ -327,6 +340,7 @@ function source.on_open(ctx)
 end
 
 function source.on_close()
+  tree_state.generation = tree_state.generation + 1
   tree_state.root = nil
   tree_state.open_dirs = {}
   tree_state.all_files = nil
@@ -363,14 +377,14 @@ function source.on_accept(item)
   if item._tree_node and item._tree_node.is_dir then
     return
   end
-  vim.cmd.edit({ args = { item.text }, magic = { file = false } })
+  file_open.open(item.text)
 end
 
 function source.on_accept_split(item, split_cmd)
   if item._tree_node and item._tree_node.is_dir then
     return
   end
-  vim.cmd(split_cmd .. ' ' .. vim.fn.fnameescape(item.text))
+  file_open.open(item.text, split_cmd)
 end
 
 function source.update_preview(item, preview_file)

@@ -1,5 +1,7 @@
+local file_open = require('kago.picker._internal.open')
 local icons = require('kago.picker.icons')
 
+---@class kago.picker.BuffersSource: kago.picker.Source
 local source = {
   name = 'buffers',
   use_preview = false,
@@ -27,7 +29,7 @@ function source.on_accept(item)
   if item.buf then
     vim.api.nvim_set_current_buf(item.buf)
   else
-    vim.cmd.edit(item.text)
+    file_open.open(item.text)
   end
 end
 
@@ -36,7 +38,7 @@ function source.on_accept_split(item, split_cmd)
     vim.cmd(split_cmd)
     vim.api.nvim_set_current_buf(item.buf)
   else
-    vim.cmd(split_cmd .. ' ' .. vim.fn.fnameescape(item.text))
+    file_open.open(item.text, split_cmd)
   end
 end
 

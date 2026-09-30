@@ -1,5 +1,7 @@
+local file_open = require('kago.picker._internal.open')
 local icons = require('kago.picker.icons')
 
+---@class kago.picker.FilesSource: kago.picker.Source
 local source = {
   name = 'files',
   use_preview = true,
@@ -48,11 +50,11 @@ function source.load(config, opts, callback)
 end
 
 function source.on_accept(item)
-  vim.cmd.edit({ args = { item.text }, magic = { file = false } })
+  file_open.open(item.text)
 end
 
 function source.on_accept_split(item, split_cmd)
-  vim.cmd(split_cmd .. ' ' .. vim.fn.fnameescape(item.text))
+  file_open.open(item.text, split_cmd)
 end
 
 return source

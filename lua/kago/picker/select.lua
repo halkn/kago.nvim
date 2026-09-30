@@ -2,6 +2,7 @@ local M = {}
 
 local original_ui_select = vim.ui.select
 
+---@param open fun(source_name: string, opts: kago.picker.OpenOptions)
 function M.open(open, items, opts, on_choice)
   if type(opts) == 'function' and on_choice == nil then
     on_choice = opts
@@ -14,6 +15,7 @@ function M.open(open, items, opts, on_choice)
     return original_ui_select(items, opts, on_choice)
   end
 
+  ---@type kago.picker.Item[]
   local picker_items = {}
   for i, item in ipairs(items) do
     picker_items[i] = { text = (opts.format_item or tostring)(item), value = item, index = i }
@@ -31,6 +33,7 @@ function M.open(open, items, opts, on_choice)
   return open('select', {
     title = opts.prompt or 'select',
     items = picker_items,
+    ---@param picked kago.picker.Item?
     on_select = function(picked)
       if picked then
         choose(picked.value, picked.index)

@@ -46,6 +46,7 @@ local function read_window(path, lnum)
   return lines, first
 end
 
+---@param state kago.picker.PreviewState
 function M.clear(state)
   if state.preview_buf and vim.api.nvim_buf_is_valid(state.preview_buf) then
     vim.bo[state.preview_buf].modifiable = true
@@ -54,6 +55,9 @@ function M.clear(state)
   end
 end
 
+---@param state kago.picker.PreviewState
+---@param path string
+---@param lnum integer?
 function M.show_file(state, path, lnum)
   if not state.preview_buf or not vim.api.nvim_buf_is_valid(state.preview_buf) then
     return
@@ -102,6 +106,7 @@ function M.show_file(state, path, lnum)
   end
 end
 
+---@param state kago.picker.State
 function M.update_current(state)
   if not state.use_preview then
     return

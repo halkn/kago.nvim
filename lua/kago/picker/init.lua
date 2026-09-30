@@ -58,6 +58,7 @@ M.config = {
 }
 
 local state = picker_state.new()
+---@type table<string, kago.picker.Source>
 local sources = {
   files = require('kago.picker.sources.files'),
   buffers = require('kago.picker.sources.buffers'),
@@ -76,6 +77,7 @@ local function update_preview()
   preview.update_current(state)
 end
 
+---@param source kago.picker.Source?
 local function close_source(source)
   if source and source.on_close then
     source.on_close()
@@ -115,6 +117,7 @@ local function accept()
   end
 end
 
+---@param split_cmd kago.picker.Split
 local function accept_with_split(split_cmd)
   local item = state.filtered[state.cursor_idx]
   local source = state.source_def
@@ -134,11 +137,16 @@ local function accept_with_split(split_cmd)
   end
 end
 
+---@param source kago.picker.Source?
+---@param fallback string
+---@return string
 local function source_title(source, fallback)
   local title = source and source.title and source.title(state.source_opts)
   return title or fallback
 end
 
+---@param source kago.picker.Source
+---@param title string
 local function apply_window_decorations(source, title)
   local prompt_win = state.prompt_win
   if prompt_win then
@@ -157,10 +165,15 @@ local function apply_window_decorations(source, title)
   end
 end
 
+---@return kago.picker.SourceOptions
 local function load_opts()
   return vim.tbl_extend('force', { origin_buf = state.origin_buf }, state.source_opts)
 end
 
+---@param generation integer
+---@param source_name string
+---@param source kago.picker.Source
+---@return fun(items: kago.picker.Item[])
 local function on_loaded(generation, source_name, source)
   return function(items)
     if not is_active(generation, source_name) then
@@ -181,6 +194,7 @@ local function reload()
   if not source then
     return
   end
+  source_name = assert(source_name)
   local generation = picker_state.begin(state)
   picker_state.cancel_job(state)
   state.all_items = {}
@@ -194,14 +208,10 @@ local function reload()
   )
 end
 
--- Source contract:
---   required: name, load(config, options, callback)
---   optional: filter, footer, title, keymaps, debounce_query, on_open, on_close,
---   on_query_change, on_accept, on_accept_split, preview_file, update_preview,
---   match_highlight_offset.
+---@return kago.picker.SourceContext
 local function build_source_context()
   return {
-    list_buf = state.list_buf,
+    list_buf = assert(state.list_buf),
     set_items = function(all, filtered)
       state.all_items = all
       state.filtered = filtered
@@ -321,6 +331,7 @@ end
 
 local source_keymap_lhs = {}
 
+---@param source kago.picker.Source
 local function set_source_keymaps(source)
   if state.prompt_buf and vim.api.nvim_buf_is_valid(state.prompt_buf) then
     for _, lhs in ipairs(source_keymap_lhs) do
@@ -340,6 +351,9 @@ local function set_source_keymaps(source)
   end
 end
 
+---@param source_name string
+---@param source kago.picker.Source
+---@param opts kago.picker.OpenOptions
 local function start_source(source_name, source, opts)
   local generation = picker_state.begin(state)
   state.source_name = source_name
@@ -376,6 +390,7 @@ function M._switch_source(target_name)
   if not target then
     return
   end
+  picker_state.cancel_timer(state)
   picker_state.cancel_job(state)
   close_source(state.source_def)
 
@@ -461,6 +476,8 @@ local function set_prompt_keymaps()
   vim.keymap.set('i', '<C-h>', '<BS>', opts)
 end
 
+---@param source_name string
+---@param opts kago.picker.OpenOptions?
 function M.open(source_name, opts)
   opts = opts or {}
   local source = sources[source_name]

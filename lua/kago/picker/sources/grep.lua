@@ -1,3 +1,5 @@
+local file_open = require('kago.picker._internal.open')
+---@class kago.picker.GrepSource: kago.picker.Source
 local source = {
   name = 'grep',
   use_preview = true,
@@ -50,29 +52,24 @@ end
 function source.on_accept(item)
   local path, lnum = item.text:match('^([^:]+):(%d+):')
   if path then
-    vim.cmd.edit({ args = { path }, magic = { file = false } })
     local line = tonumber(lnum)
-    if line then
-      vim.api.nvim_win_set_cursor(0, { math.floor(line), 0 })
-    end
+    file_open.open(path, nil, line and math.floor(line))
   end
 end
 
 function source.on_accept_split(item, split_cmd)
   local path, lnum = item.text:match('^([^:]+):(%d+):')
   if path then
-    vim.cmd(split_cmd .. ' ' .. vim.fn.fnameescape(path))
     local line = tonumber(lnum)
-    if line then
-      vim.api.nvim_win_set_cursor(0, { math.floor(line), 0 })
-    end
+    file_open.open(path, split_cmd, line and math.floor(line))
   end
 end
 
 function source.preview_file(item)
   local path, lnum = item.text:match('^([^:]+):(%d+):')
   if path then
-    return path, tonumber(lnum)
+    local line = tonumber(lnum)
+    return path, line and math.floor(line)
   end
   return nil, nil
 end

@@ -1,7 +1,7 @@
 local M = {}
 
 ---@type string?
-local _saved_guicursor = nil
+local saved_guicursor = nil
 
 ---@class kago.picker.Layout
 ---@field w integer
@@ -9,6 +9,7 @@ local _saved_guicursor = nil
 ---@field row integer
 ---@field col integer
 
+---@param config kago.picker.Config
 ---@return kago.picker.Layout
 function M.calc_layout(config)
   local total_w = vim.o.columns
@@ -20,6 +21,10 @@ function M.calc_layout(config)
   return { w = w, h = h, row = row, col = col }
 end
 
+---@param layout kago.picker.Layout
+---@param title string?
+---@param use_preview boolean
+---@param footer string?
 function M.create_windows(layout, title, use_preview, footer)
   local prompt_buf = vim.api.nvim_create_buf(false, true)
   vim.bo[prompt_buf].buftype = 'prompt'
@@ -91,17 +96,17 @@ function M.create_windows(layout, title, use_preview, footer)
 end
 
 function M.hide_cursor()
-  if not _saved_guicursor then
-    _saved_guicursor = vim.o.guicursor
+  if not saved_guicursor then
+    saved_guicursor = vim.o.guicursor
   end
   vim.api.nvim_set_hl(0, 'PickerHiddenCursor', { blend = 100, nocombine = true })
   vim.o.guicursor = 'a:PickerHiddenCursor/PickerHiddenCursor'
 end
 
 function M.restore_cursor()
-  if _saved_guicursor then
-    vim.o.guicursor = _saved_guicursor
-    _saved_guicursor = nil
+  if saved_guicursor then
+    vim.o.guicursor = saved_guicursor
+    saved_guicursor = nil
   end
 end
 

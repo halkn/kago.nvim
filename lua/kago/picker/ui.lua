@@ -4,6 +4,9 @@ local match_ns = vim.api.nvim_create_namespace('kago_picker_match')
 
 -- matchfuzzypos copies whatever it is given across the vimscript boundary, so it
 -- only ever sees the match text and an index back into the caller's items.
+---@param items kago.picker.Item[]
+---@param query string
+---@return kago.picker.Item[]
 function M.default_filter(items, query)
   if query == '' then
     for _, item in ipairs(items) do
@@ -19,13 +22,14 @@ function M.default_filter(items, query)
   local matched, positions = result[1] or {}, result[2] or {}
   local filtered = {}
   for i, key in ipairs(matched) do
-    local item = items[math.floor(key.index)]
+    local item = assert(items[math.floor(key.index)])
     item._match_pos = positions[i]
     filtered[i] = item
   end
   return filtered
 end
 
+---@param state kago.picker.State
 function M.get_query(state)
   if not state.prompt_buf or not vim.api.nvim_buf_is_valid(state.prompt_buf) then
     return ''
@@ -34,6 +38,7 @@ function M.get_query(state)
   return line:gsub('^> ', '')
 end
 
+---@param state kago.picker.State
 function M.render_list(state)
   if not state.list_buf or not vim.api.nvim_buf_is_valid(state.list_buf) then
     return
@@ -48,6 +53,7 @@ function M.render_list(state)
   M.apply_match_highlights(state)
 end
 
+---@param state kago.picker.State
 function M.apply_match_highlights(state)
   if not state.list_buf or not vim.api.nvim_buf_is_valid(state.list_buf) then
     return
@@ -70,6 +76,7 @@ function M.apply_match_highlights(state)
   end
 end
 
+---@param state kago.picker.State
 function M.update_cursor(state)
   if not state.list_win or not vim.api.nvim_win_is_valid(state.list_win) then
     return
@@ -82,6 +89,9 @@ function M.update_cursor(state)
   vim.api.nvim_win_set_cursor(state.list_win, { state.cursor_idx, 0 })
 end
 
+---@param state kago.picker.State
+---@param delta integer
+---@param update_preview fun()
 function M.move_cursor(state, delta, update_preview)
   local count = #state.filtered
   if count == 0 then
@@ -97,6 +107,7 @@ function M.move_cursor(state, delta, update_preview)
   update_preview()
 end
 
+---@param state kago.picker.State
 function M.focus_list(state)
   if state.list_win and vim.api.nvim_win_is_valid(state.list_win) then
     vim.api.nvim_set_current_win(state.list_win)
@@ -104,6 +115,7 @@ function M.focus_list(state)
   end
 end
 
+---@param state kago.picker.State
 function M.focus_prompt(state)
   if state.prompt_win and vim.api.nvim_win_is_valid(state.prompt_win) then
     vim.api.nvim_set_current_win(state.prompt_win)
