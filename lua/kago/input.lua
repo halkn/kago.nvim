@@ -13,6 +13,7 @@ function M.input(opts, on_confirm)
 
   local buf = vim.api.nvim_create_buf(false, true)
   vim.bo[buf].buftype = 'nofile'
+  vim.bo[buf].autocomplete = false
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, { default })
 
   local win = vim.api.nvim_open_win(buf, true, {

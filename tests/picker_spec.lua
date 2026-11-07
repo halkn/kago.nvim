@@ -197,6 +197,7 @@ end
 
 describe('picker', function()
   after_each(function()
+    vim.cmd('set autocomplete&')
     picker.close()
     vim.cmd('stopinsert')
     vim.cmd('silent! only!')
@@ -205,6 +206,22 @@ describe('picker', function()
       vim.fn.delete(path, 'rf')
     end
     temporary_paths = {}
+  end)
+
+  it('disables autocomplete only in the prompt buffer', function()
+    local home = vim.api.nvim_get_current_buf()
+    vim.go.autocomplete = true
+    picker.ui_select({ 'a', 'b' }, {}, function() end)
+    local prompt = vim.api.nvim_get_current_buf()
+    eq('prompt', vim.bo[prompt].buftype)
+    eq(false, vim.bo[prompt].autocomplete)
+    -- vim.bo reads only the local value, which is unset (nil) in buffers that follow the global.
+    eq(
+      true,
+      vim.api.nvim_buf_call(home, function()
+        return vim.o.autocomplete
+      end)
+    )
   end)
 
   for _, source in ipairs({ 'files', 'buffers', 'grep', 'buf_lines', 'tree', 'git' }) do

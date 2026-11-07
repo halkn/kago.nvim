@@ -49,11 +49,42 @@ describe('explorer filter', function()
   end)
 
   after_each(function()
+    vim.cmd('set autocomplete&')
+    vim.api.nvim_create_augroup('kago_test_autocomplete', { clear = true })
     explorer.close()
     vim.cmd('stopinsert')
     vim.cmd('silent! only!')
     vim.cmd('silent! %bwipeout!')
     vim.fn.delete(root, 'rf')
+  end)
+
+  it('disables autocomplete only in the input buffer', function()
+    vim.go.autocomplete = true
+    explorer.open({ root = root })
+    local sidebar = vim.api.nvim_get_current_buf()
+    feed('/')
+    local input = vim.api.nvim_get_current_buf()
+    eq('kago-explorer-filter', vim.bo[input].filetype)
+    eq(false, vim.bo[input].autocomplete)
+    -- vim.bo reads only the local value, which is unset (nil) in buffers that follow the global.
+    eq(
+      true,
+      vim.api.nvim_buf_call(sidebar, function()
+        return vim.o.autocomplete
+      end)
+    )
+  end)
+
+  it('keeps autocomplete disabled when a FileType autocmd enables it', function()
+    vim.api.nvim_create_autocmd('FileType', {
+      group = vim.api.nvim_create_augroup('kago_test_autocomplete', { clear = true }),
+      command = 'setlocal autocomplete',
+    })
+    explorer.open({ root = root })
+    feed('/')
+    local input = vim.api.nvim_get_current_buf()
+    eq('kago-explorer-filter', vim.bo[input].filetype)
+    eq(false, vim.bo[input].autocomplete)
   end)
 
   it('scans paths with smart case, literals, hidden files and symlink cycles', function()
