@@ -237,6 +237,8 @@ function Filter:open_input(parent, actions)
   vim.b[buf].completion = false
   vim.bo[buf].bufhidden = 'wipe'
   vim.bo[buf].filetype = 'kago-explorer-filter'
+  -- After filetype, so FileType autocmds that enable autocomplete cannot override it.
+  vim.bo[buf].autocomplete = false
   vim.bo[buf].swapfile = false
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, { self.query })
   vim.api.nvim_buf_set_extmark(buf, input_ns, 0, 0, {

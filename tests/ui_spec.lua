@@ -55,6 +55,22 @@ local function input_cancels_when_window_is_left()
   assert(not vim.api.nvim_buf_is_valid(buf))
 end
 
+local function input_disables_autocomplete()
+  local home = vim.api.nvim_get_current_buf()
+  vim.go.autocomplete = true
+  input.input({ prompt = 'Name' }, function() end)
+  local buf = vim.api.nvim_get_current_buf()
+  assert(buf ~= home, 'input must open its own buffer')
+  assert(vim.bo[buf].autocomplete == false, 'input buffer must disable autocomplete')
+  -- vim.bo reads only the local value, which is unset (nil) in buffers that follow the global.
+  assert(
+    vim.api.nvim_buf_call(home, function()
+      return vim.o.autocomplete
+    end),
+    'input must not change other buffers'
+  )
+end
+
 local function notify_keeps_caller_opts()
   notify.setup()
   local opts = { title = 'build', timeout = false }
@@ -169,12 +185,14 @@ describe('input and notifications', function()
   end)
 
   after_each(function()
+    vim.cmd('set autocomplete&')
     vim.cmd('stopinsert')
     vim.cmd('silent! only!')
     vim.cmd('silent! %bwipeout!')
   end)
 
   it('confirms an empty input exactly once', input_reports_empty_confirm)
+  it('disables autocomplete only in the input buffer', input_disables_autocomplete)
   it('cancels input and cleans up when leaving the window', input_cancels_when_window_is_left)
   it(
     'does not mutate notification options or merge unrelated notifications',

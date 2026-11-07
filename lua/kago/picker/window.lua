@@ -29,6 +29,7 @@ function M.create_windows(layout, title, use_preview, footer)
   local prompt_buf = vim.api.nvim_create_buf(false, true)
   vim.bo[prompt_buf].buftype = 'prompt'
   vim.bo[prompt_buf].filetype = 'picker_prompt'
+  vim.bo[prompt_buf].autocomplete = false
 
   local prompt_win = vim.api.nvim_open_win(prompt_buf, true, {
     relative = 'editor',
